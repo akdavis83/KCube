@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kryptonite Cube - Lex Luthor's Pride</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(ellipse at center, #001a00 0%, #000000 70%);
+            overflow: hidden;
+            font-family: 'Orbitron', monospace;
+            height: 100vh;
+            position: relative;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Kryptonite energy particles */
+        .energy-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: float 3s infinite ease-in-out;
+            box-shadow: 0 0 6px #00ff00;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.7; }
+            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+        }
+
+        /* Title overlay */
+        .title-overlay {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 20px #00ff00;
+        }
+
+        .title-overlay h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .title-overlay p {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        @keyframes pulse {
+            0%, 100% { text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00; }
+            50% { text-shadow: 0 0 30px #00ff00, 0 0 60px #00ff00, 0 0 80px #00ff00; }
+        }
+
+        /* Power indicator */
+        .power-indicator {
+            position: fixed;
+            bottom: 50px;
+            left: 50px;
+            z-index: 10;
+            color: #00ff00;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .power-bar {
+            width: 200px;
+            height: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            box-shadow: 0 0 20px #00ff00;
+        }
+
+        .power-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00aa00);
+            width: 100%;
+            animation: powerPulse 1.5s infinite;
+        }
+
+        @keyframes powerPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        /* Instructions */
+        .instructions {
+            position: fixed;
+            bottom: 50px;
+            right: 50px;
+            z-index: 10;
+            color: #00ff00;
+            font-family: 'Orbitron', monospace;
+            text-align: right;
+            opacity: 0.7;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Energy particles background -->
+        <div class="energy-particles" id="particles"></div>
+        
+        <!-- Title overlay -->
+        <div class="title-overlay">
+            <h1>KRYPTONITE</h1>
+            <p>Lex Luthor's Ultimate Weapon</p>
+        </div>
+
+        <!-- Power indicator -->
+        <div class="power-indicator">
+            <div>POWER LEVEL: MAXIMUM</div>
+            <div class="power-bar">
+                <div class="power-fill"></div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <div>Mouse: Orbit Camera</div>
+            <div>Scroll: Zoom</div>
+            <div>Click: Energy Burst</div>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+    <script>
+        // Use global THREE object instead of modules for better compatibility
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000000, 1, 100);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 8);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Controls (using basic mouse interaction instead of OrbitControls for simplicity)
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        // Mouse interaction
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - window.innerWidth / 2) * 0.001;
+            mouseY = (event.clientY - window.innerHeight / 2) * 0.001;
+            targetRotationX = mouseY * 0.5;
+            targetRotationY = mouseX * 0.5;
+        });
+
+        // Lighting setup
+        const ambientLight = new THREE.AmbientLight(0x002200, 0.3);
+        scene.add(ambientLight);
+
+        // Main kryptonite light
+        const kryptoniteLight = new THREE.PointLight(0x00ff00, 3, 50);
+        kryptoniteLight.position.set(0, 0, 0);
+        kryptoniteLight.castShadow = true;
+        kryptoniteLight.shadow.mapSize.width = 2048;
+        kryptoniteLight.shadow.mapSize.height = 2048;
+        scene.add(kryptoniteLight);
+
+        // Additional accent lights
+        const accentLight1 = new THREE.PointLight(0x00aa00, 1, 30);
+        accentLight1.position.set(10, 10, 10);
+        scene.add(accentLight1);
+
+        const accentLight2 = new THREE.PointLight(0x00ff44, 1, 30);
+        accentLight2.position.set(-10, -10, 10);
+        scene.add(accentLight2);
+
+        // Kryptonite crystal material with custom shader
+        const kryptoniteVertexShader = `
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            varying vec2 vUv;
+            uniform float time;
+            
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                vPosition = position;
+                vUv = uv;
+                
+                // Add subtle vertex displacement for crystal effect
+                vec3 pos = position;
+                pos += normal * sin(time * 2.0 + position.x * 10.0) * 0.02;
+                pos += normal * sin(time * 3.0 + position.y * 8.0) * 0.015;
+                pos += normal * sin(time * 1.5 + position.z * 12.0) * 0.01;
+                
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+        `;
+
+        const kryptoniteFragmentShader = `
+            uniform float time;
+            uniform vec3 color;
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            varying vec2 vUv;
+            
+            void main() {
+                // Base crystal color
+                vec3 baseColor = color;
+                
+                // Add crystalline patterns
+                float pattern1 = sin(vPosition.x * 20.0 + time) * sin(vPosition.y * 15.0 + time * 0.7);
+                float pattern2 = cos(vPosition.z * 25.0 + time * 1.3) * cos(vPosition.x * 18.0 + time * 0.5);
+                float pattern3 = sin(length(vPosition) * 30.0 + time * 2.0);
+                
+                float combinedPattern = (pattern1 + pattern2 + pattern3) * 0.3;
+                
+                // Fresnel effect for crystal-like appearance
+                vec3 viewDirection = normalize(cameraPosition - vPosition);
+                float fresnel = pow(1.0 - dot(vNormal, viewDirection), 2.0);
+                
+                // Energy pulsing
+                float pulse = sin(time * 4.0) * 0.3 + 0.7;
+                
+                // Combine effects
+                vec3 finalColor = baseColor * (1.0 + combinedPattern * 0.5);
+                finalColor += vec3(0.0, 1.0, 0.0) * fresnel * 0.8;
+                finalColor *= pulse;
+                
+                // Add inner glow
+                float innerGlow = 1.0 - fresnel;
+                finalColor += vec3(0.0, 0.8, 0.0) * innerGlow * 0.3;
+                
+                gl_FragColor = vec4(finalColor, 0.9 + fresnel * 0.1);
+            }
+        `;
+
+        // Create kryptonite material
+        const kryptoniteMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                color: { value: new THREE.Color(0x00ff00) }
+            },
+            vertexShader: kryptoniteVertexShader,
+            fragmentShader: kryptoniteFragmentShader,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+
+        // Create the main kryptonite cube with beveled edges
+        const cubeGeometry = new THREE.BoxGeometry(3, 3, 3, 8, 8, 8);
+        
+        // Modify geometry for crystal-like appearance
+        const positions = cubeGeometry.attributes.position.array;
+        for (let i = 0; i < positions.length; i += 3) {
+            const x = positions[i];
+            const y = positions[i + 1];
+            const z = positions[i + 2];
+            
+            // Add some randomness to create crystal facets
+            const noise = (Math.random() - 0.5) * 0.1;
+            positions[i] += noise;
+            positions[i + 1] += noise;
+            positions[i + 2] += noise;
+        }
+        cubeGeometry.attributes.position.needsUpdate = true;
+        cubeGeometry.computeVertexNormals();
+
+        const kryptoniteCube = new THREE.Mesh(cubeGeometry, kryptoniteMaterial);
+        kryptoniteCube.castShadow = true;
+        kryptoniteCube.receiveShadow = true;
+        scene.add(kryptoniteCube);
+
+        // Create inner core
+        const coreGeometry = new THREE.SphereGeometry(1.2, 32, 32);
+        const coreMaterial = new THREE.MeshPhongMaterial({
+            color: 0x00ff00,
+            emissive: 0x004400,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.3
+        });
+        const core = new THREE.Mesh(coreGeometry, coreMaterial);
+        scene.add(core);
+
+        // Create energy rings around the cube
+        const ringGroup = new THREE.Group();
+        for (let i = 0; i < 3; i++) {
+            const ringGeometry = new THREE.TorusGeometry(4 + i * 0.5, 0.05, 8, 100);
+            const ringMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.8,
+                transparent: true,
+                opacity: 0.6
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.rotation.x = Math.PI / 2 + (i * Math.PI / 6);
+            ring.rotation.y = i * Math.PI / 4;
+            ringGroup.add(ring);
+        }
+        scene.add(ringGroup);
+
+        // Create floating crystal shards
+        const shards = [];
+        for (let i = 0; i < 20; i++) {
+            const shardGeometry = new THREE.ConeGeometry(0.1, 0.5, 6);
+            const shardMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00ff00,
+                emissive: 0x002200,
+                transparent: true,
+                opacity: 0.7
+            });
+            const shard = new THREE.Mesh(shardGeometry, shardMaterial);
+            
+            // Random position around the cube
+            const radius = 6 + Math.random() * 4;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            
+            shard.position.x = radius * Math.sin(phi) * Math.cos(theta);
+            shard.position.y = radius * Math.sin(phi) * Math.sin(theta);
+            shard.position.z = radius * Math.cos(phi);
+            
+            shard.rotation.x = Math.random() * Math.PI;
+            shard.rotation.y = Math.random() * Math.PI;
+            shard.rotation.z = Math.random() * Math.PI;
+            
+            shards.push(shard);
+            scene.add(shard);
+        }
+
+        // Simplified rendering without post-processing for better compatibility
+
+        // Create energy particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 3 + 's';
+                particle.style.animationDuration = (2 + Math.random() * 2) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // Energy burst effect on click
+        let energyBurst = false;
+        document.addEventListener('click', () => {
+            energyBurst = true;
+            setTimeout(() => energyBurst = false, 1000);
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+            
+            // Update shader uniforms
+            kryptoniteMaterial.uniforms.time.value = time;
+
+            // Rotate the main cube
+            kryptoniteCube.rotation.x += 0.005;
+            kryptoniteCube.rotation.y += 0.008;
+            kryptoniteCube.rotation.z += 0.003;
+
+            // Rotate the core
+            core.rotation.x -= 0.01;
+            core.rotation.y -= 0.015;
+
+            // Animate energy rings
+            ringGroup.rotation.x += 0.01;
+            ringGroup.rotation.y += 0.005;
+            ringGroup.rotation.z += 0.008;
+
+            // Animate floating shards
+            shards.forEach((shard, index) => {
+                shard.rotation.x += 0.02;
+                shard.rotation.y += 0.015;
+                
+                // Orbital motion
+                const orbitSpeed = 0.001 + index * 0.0001;
+                const radius = 6 + Math.sin(time + index) * 2;
+                shard.position.x = radius * Math.cos(time * orbitSpeed + index);
+                shard.position.z = radius * Math.sin(time * orbitSpeed + index);
+                shard.position.y += Math.sin(time * 2 + index) * 0.01;
+            });
+
+            // Animate lights
+            kryptoniteLight.intensity = 3 + Math.sin(time * 4) * 0.5;
+            accentLight1.position.x = Math.sin(time * 0.7) * 15;
+            accentLight1.position.z = Math.cos(time * 0.7) * 15;
+            accentLight2.position.x = Math.cos(time * 0.5) * 12;
+            accentLight2.position.y = Math.sin(time * 0.5) * 12;
+
+            // Energy burst effect
+            if (energyBurst) {
+                kryptoniteLight.intensity = 8;
+            }
+
+            // Update camera rotation based on mouse
+            camera.position.x += (targetRotationY - camera.rotation.y) * 0.05;
+            camera.position.y += (targetRotationX - camera.rotation.x) * 0.05;
+            camera.lookAt(scene.position);
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Add some dramatic sound effects (optional)
+        console.log("🟢 KRYPTONITE CUBE ACTIVATED 🟢");
+        console.log("Lex Luthor would be proud...");
+    </script>
+</body>
+</html>
